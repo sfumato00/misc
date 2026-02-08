@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crossing the Chasm: Interactive Adoption Lifecycle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Merriweather:ital,wght@0,300;0,700;1,300&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #fdfbf7; color: #2d3748; }
+        h1, h2, h3 { font-family: 'Merriweather', serif; }
+        .chart-container { 
+            position: relative; 
+            width: 100%; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            height: 400px; 
+            max-height: 450px;
+        }
+        .card-active { border-left: 4px solid #d97706; background-color: #fffbeb; }
+        .transition-all { transition: all 0.3s ease-in-out; }
+        
+        /* Custom Scrollbar for text areas */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+    </style>
+    <!-- Chosen Palette: Warm Neutrals & Earth Tones (Cream #fdfbf7, Slate #2d3748, Amber #d97706 for emphasis, Muted Blues for secondary data) -->
+    <!-- Application Structure Plan:
+        1. Hero Section: Intro to the concept and instructions.
+        2. Main Visualization (The Curve): A segmented Gaussian curve. The central interaction point. Users select segments to drive the content below.
+        3. Dynamic Detail View: Updates based on the chart selection. Shows Psychographics, Strategy, and Key Characteristics.
+        4. "The Chasm" Strategy Block: A dedicated interactive module focusing specifically on the gap between Early Adopters and Early Majority.
+        5. Comparative Analysis: A toggle-able view comparing adjacent groups (e.g., Visionaries vs. Pragmatists) to highlight friction points.
+        WHY: This structure moves from the "Big Picture" (The Curve) to "Specifics" (Profiles) to "Actionable Strategy" (Crossing the Chasm), mirroring the cognitive flow of learning the methodology.
+    -->
+    <!-- Visualization & Content Choices:
+        1. Adoption Curve -> Inform/Select -> Segmented Line Chart (Chart.js) -> Clicking a segment acts as a filter -> Essential for visualizing the volume and sequence of adoption.
+        2. Psychographic Profiles -> Inform -> Dynamic Cards -> Updates via JS state -> Text is better than charts for behavioral descriptions.
+        3. The Chasm Logic -> Explain/Strategy -> Step-by-Step Flow -> Interactive buttons to reveal "Whole Product" layers -> Simplifies a complex strategic concept.
+        CONFIRMATION: NO SVG graphics used. NO Mermaid JS used.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-white shadow-sm py-4 sticky top-0 z-50">
+        <div class="container mx-auto px-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <span class="text-2xl font-bold text-slate-800 tracking-tight">Lifecycle<span class="text-amber-600">Explorer</span></span>
+            </div>
+            <div class="hidden md:flex space-x-6 text-sm font-medium text-slate-600">
+                <a href="#visualization" class="hover:text-amber-600 transition-colors">The Curve</a>
+                <a href="#profiles" class="hover:text-amber-600 transition-colors">Psychographics</a>
+                <a href="#chasm" class="hover:text-amber-600 transition-colors">The Chasm</a>
+                <a href="#strategy" class="hover:text-amber-600 transition-colors">Strategy</a>
+            </div>
+            <button onclick="resetApp()" class="text-sm border border-slate-300 px-3 py-1 rounded hover:bg-slate-50 transition-colors">Reset View</button>
+        </div>
+    </nav>
+
+    <!-- Main Content Wrapper -->
+    <main class="flex-grow container mx-auto px-4 py-8 space-y-12">
+
+        <!-- Intro Section -->
+        <section class="text-center max-w-3xl mx-auto space-y-4">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-800 leading-tight">Navigating the Technology Adoption Lifecycle</h1>
+            <p class="text-lg text-slate-600 leading-relaxed">
+                Understand how new technologies permeate markets. Explore the psychographics of different user groups and master the strategy of <strong>"Crossing the Chasm"</strong> to move from niche appeal to mass market success.
+            </p>
+            <div class="flex justify-center gap-2 text-sm text-slate-500 bg-amber-50 inline-block px-4 py-2 rounded-full mx-auto border border-amber-100">
+                <span class="font-semibold text-amber-700">Interact:</span> Click on the curve segments below to reveal deep insights.
+            </div>
+        </section>
+
+        <!-- Visualization Section -->
+        <section id="visualization" class="bg-white rounded-2xl shadow-lg border border-slate-100 p-6 md:p-8">
+            <div class="mb-6 border-b border-slate-100 pb-4">
+                <h2 class="text-2xl font-bold text-slate-800">The Adoption Bell Curve</h2>
+                <p class="text-slate-500 mt-1">Market penetration over time. The gap represents the "Chasm".</p>
+            </div>
+            
+            <!-- Chart Container -->
+            <div class="chart-container">
+                <canvas id="adoptionChart"></canvas>
+            </div>
+
+            <!-- Chart Controls/Legend fallback for accessibility -->
+            <div class="mt-6 flex flex-wrap justify-center gap-2" id="chart-legend-controls">
+                <!-- Buttons injected by JS -->
+            </div>
+        </section>
+
+        <!-- Dynamic Content Section (Psychographics) -->
+        <section id="profiles" class="grid lg:grid-cols-12 gap-8">
+            
+            <!-- Left: Sidebar / Indicator -->
+            <div class="lg:col-span-4 space-y-4">
+                <div class="bg-slate-800 text-white p-6 rounded-xl shadow-md h-full flex flex-col justify-between relative overflow-hidden">
+                    <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-amber-500 rounded-full opacity-20 blur-xl"></div>
+                    
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Current Segment</h3>
+                        <h2 id="segment-title" class="text-3xl font-bold text-amber-400 mb-1">Select a Segment</h2>
+                        <div id="segment-pct" class="text-xl font-light text-white opacity-90 mb-6">-- % of Market</div>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <h4 class="text-sm font-semibold text-slate-300">Psychographic Profile</h4>
+                                <p id="segment-profile" class="text-slate-100 mt-1 text-sm leading-relaxed">Click on the chart above to see the psychological profile of this group.</p>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-semibold text-slate-300">Key Motto</h4>
+                                <p id="segment-motto" class="text-amber-200 italic mt-1 text-sm font-serif">"..."</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 pt-6 border-t border-slate-700">
+                        <div class="flex items-center justify-between text-xs text-slate-400">
+                            <span>Risk Tolerance</span>
+                            <div class="w-24 bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                                <div id="risk-bar" class="bg-amber-500 h-full w-0 transition-all duration-500"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Detailed Analysis -->
+            <div class="lg:col-span-8 bg-white p-6 rounded-xl shadow-md border border-slate-100">
+                <div class="border-b border-slate-100 pb-4 mb-6 flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-slate-800">Strategic Deep Dive</h3>
+                    <span id="market-phase" class="px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold uppercase">Early Market</span>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Column 1 -->
+                    <div class="space-y-6">
+                        <div class="bg-amber-50 p-4 rounded-lg border border-amber-100">
+                            <h4 class="font-bold text-amber-900 mb-2 flex items-center">
+                                <span class="text-lg mr-2">🎯</span> Goal
+                            </h4>
+                            <p id="segment-goal" class="text-amber-800 text-sm">Select a segment to view goals.</p>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-bold text-slate-700 mb-2 flex items-center">
+                                <span class="text-lg mr-2">💡</span> What they want
+                            </h4>
+                            <p id="segment-wants" class="text-slate-600 text-sm leading-relaxed">Details will appear here.</p>
+                        </div>
+                    </div>
+
+                    <!-- Column 2 -->
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="font-bold text-slate-700 mb-2 flex items-center">
+                                <span class="text-lg mr-2">⚠️</span> Sales Objection
+                            </h4>
+                            <p id="segment-fears" class="text-slate-600 text-sm leading-relaxed">Details will appear here.</p>
+                        </div>
+
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                            <h4 class="font-bold text-slate-700 mb-2 flex items-center">
+                                <span class="text-lg mr-2">🚀</span> Best Strategy
+                            </h4>
+                            <ul id="segment-strategy" class="text-slate-600 text-sm space-y-2 list-disc pl-4">
+                                <li>Interaction required.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- The Chasm Section -->
+        <section id="chasm" class="bg-slate-900 text-white rounded-2xl shadow-xl overflow-hidden">
+            <div class="p-8 md:p-12 text-center border-b border-slate-800">
+                <h2 class="text-3xl font-bold font-serif mb-4 text-amber-400">Crossing The Chasm</h2>
+                <p class="max-w-2xl mx-auto text-slate-300 text-lg">
+                    The most dangerous point in the lifecycle. The transition from <strong>Early Adopters</strong> (Visionaries) to the <strong>Early Majority</strong> (Pragmatists).
+                </p>
+            </div>
+            
+            <div class="grid md:grid-cols-2">
+                <!-- The Problem -->
+                <div class="p-8 border-r border-slate-800 hover:bg-slate-800/50 transition-colors">
+                    <div class="flex items-center mb-4">
+                        <span class="text-3xl mr-4">⚡</span>
+                        <h3 class="text-xl font-bold">The Disconnect</h3>
+                    </div>
+                    <p class="text-slate-400 mb-4 leading-relaxed">
+                        Visionaries buy because the technology is <em>new</em>. Pragmatists buy when the technology is <em>proven</em>. Pragmatists don't trust Visionaries as references.
+                    </p>
+                    <div class="bg-slate-800 p-4 rounded text-sm text-slate-300">
+                        <strong>Result:</strong> You run out of money waiting for the mainstream market to activate.
+                    </div>
+                </div>
+
+                <!-- The Solution -->
+                <div class="p-8 hover:bg-slate-800/50 transition-colors relative group cursor-pointer" onclick="toggleWholeProduct()">
+                    <div class="absolute top-4 right-4 text-xs text-amber-500 font-bold animate-pulse">CLICK TO REVEAL STRATEGY</div>
+                    <div class="flex items-center mb-4">
+                        <span class="text-3xl mr-4">🛠️</span>
+                        <h3 class="text-xl font-bold">The "Whole Product" Solution</h3>
+                    </div>
+                    
+                    <div id="whole-product-teaser">
+                        <p class="text-slate-400 mb-4">
+                            To win over Pragmatists, you must offer a 100% complete solution, not just a core technology.
+                        </p>
+                        <button class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded text-sm font-bold transition-colors">
+                            View the Whole Product Model
+                        </button>
+                    </div>
+
+                    <div id="whole-product-reveal" class="hidden space-y-3">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-4 h-4 rounded-full bg-red-500"></div>
+                            <span class="font-bold">1. Core Product</span>
+                            <span class="text-xs text-slate-400">(The tech)</span>
+                        </div>
+                        <div class="flex items-center space-x-2 pl-4 border-l border-slate-700">
+                            <div class="w-4 h-4 rounded-full bg-orange-500"></div>
+                            <span class="font-bold">2. Expected Product</span>
+                            <span class="text-xs text-slate-400">(Support, installation)</span>
+                        </div>
+                        <div class="flex items-center space-x-2 pl-8 border-l border-slate-700">
+                            <div class="w-4 h-4 rounded-full bg-yellow-500"></div>
+                            <span class="font-bold">3. Augmented Product</span>
+                            <span class="text-xs text-slate-400">(Integrations, standards)</span>
+                        </div>
+                        <div class="flex items-center space-x-2 pl-12 border-l border-slate-700">
+                            <div class="w-4 h-4 rounded-full bg-green-500"></div>
+                            <span class="font-bold">4. Potential Product</span>
+                            <span class="text-xs text-slate-400">(Growth path)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Comparison Matrix -->
+        <section id="strategy" class="bg-white rounded-xl shadow p-6 md:p-8">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold text-slate-800">Visionaries vs. Pragmatists</h2>
+                <p class="text-slate-500">Why the transition is so difficult.</p>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr>
+                            <th class="p-4 border-b-2 border-slate-100 w-1/3">Feature</th>
+                            <th class="p-4 border-b-2 border-slate-100 w-1/3 text-amber-700 bg-amber-50 rounded-t-lg">Early Adopters (Visionaries)</th>
+                            <th class="p-4 border-b-2 border-slate-100 w-1/3 text-slate-700 bg-slate-50 rounded-t-lg">Early Majority (Pragmatists)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm text-slate-600">
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="p-4 border-b border-slate-100 font-bold text-slate-800">Motivation</td>
+                            <td class="p-4 border-b border-slate-100">Gain competitive advantage</td>
+                            <td class="p-4 border-b border-slate-100">Gain productivity improvement</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="p-4 border-b border-slate-100 font-bold text-slate-800">Risk Appetite</td>
+                            <td class="p-4 border-b border-slate-100">Willing to take high risks</td>
+                            <td class="p-4 border-b border-slate-100">Manage risks carefully</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="p-4 border-b border-slate-100 font-bold text-slate-800">Product Expectation</td>
+                            <td class="p-4 border-b border-slate-100">Accept bugs/glitches</td>
+                            <td class="p-4 border-b border-slate-100">Want bug-free, complete solutions</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="p-4 border-b border-slate-100 font-bold text-slate-800">Reference Source</td>
+                            <td class="p-4 border-b border-slate-100">Other visionaries</td>
+                            <td class="p-4 border-b border-slate-100">Other pragmatists (peers)</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="p-4 border-b border-slate-100 font-bold text-slate-800">Price Sensitivity</td>
+                            <td class="p-4 border-b border-slate-100">Low (Price inelastic)</td>
+                            <td class="p-4 border-b border-slate-100">Price sensitive</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-50 border-t border-slate-200 py-8 mt-12">
+        <div class="container mx-auto px-4 text-center text-slate-500 text-sm">
+            <p>&copy; 2026 Interactive Analysis. Based on "Crossing the Chasm" by Geoffrey A. Moore.</p>
+            <p class="mt-2 text-xs">This tool is for educational purposes to visualize the Psychographic Adoption Model.</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- Data & Content Store ---
+        const segments = {
+            innovators: {
+                title: "Innovators",
+                pct: "2.5%",
+                profile: "Tech enthusiasts and gatekeepers. They pursue new products aggressively because technology is a central interest in their life.",
+                motto: "Try it because it's new.",
+                risk: 100,
+                goal: "To be the first. To explore properties of the new device.",
+                wants: "Truth, no fluff, cheap access, technical documentation.",
+                fears: "Being bored, obsolete tech.",
+                strategy: ["Direct technical access", "No marketing fluff", "Give it to them early/free for feedback"],
+                color: "rgba(239, 68, 68, 0.7)", // Red
+                marketPhase: "Early Market"
+            },
+            earlyAdopters: {
+                title: "Early Adopters",
+                pct: "13.5%",
+                profile: "Visionaries. They are not technologists, but people who can imagine how the technology will breakthrough existing patterns.",
+                motto: "Get ahead of the herd.",
+                risk: 80,
+                goal: "Fundamental breakthrough. Order-of-magnitude ROI.",
+                wants: "Project-based solutions, customization, milestones.",
+                fears: "Missing the opportunity for a strategic leap.",
+                strategy: ["Sell the dream/vision", "Custom projects", "High touch executive sales"],
+                color: "rgba(245, 158, 11, 0.7)", // Amber
+                marketPhase: "Early Market"
+            },
+            chasm: {
+                title: "The Chasm",
+                pct: "!!!",
+                profile: "The graveyard of products. This is where you run out of cash trying to sell a Visionary product to a Pragmatist buyer without a 'Whole Product'.",
+                motto: "Mind the gap.",
+                risk: 50,
+                goal: "Survival. Transition from custom projects to standard products.",
+                wants: "A beachhead market (niche).",
+                fears: "Irrelevance.",
+                strategy: ["Pick a specific niche (D-Day strategy)", "Create a Whole Product", "Dominate the niche, then expand"],
+                color: "rgba(30, 41, 59, 0.9)", // Dark Slate
+                marketPhase: "Transition Zone"
+            },
+            earlyMajority: {
+                title: "Early Majority",
+                pct: "34%",
+                profile: "Pragmatists. They accept the risk of new things only if the productivity benefits are proven. They buy from market leaders.",
+                motto: "Stick with the herd.",
+                risk: 40,
+                goal: "Productivity improvement. Practical evolution.",
+                wants: "Proven quality, support, reliability, peer references.",
+                fears: "Disruption, bugs, proprietary lock-in without standards.",
+                strategy: ["Market leadership signal", "Strong references", "Complete ecosystem"],
+                color: "rgba(16, 185, 129, 0.7)", // Emerald
+                marketPhase: "Mainstream Market"
+            },
+            lateMajority: {
+                title: "Late Majority",
+                pct: "34%",
+                profile: "Conservatives. They are pessimistic about their ability to gain value from technology. They buy only when prices fall and the product is a commodity.",
+                motto: "Better safe than sorry.",
+                risk: 20,
+                goal: "Parity. Don't get left behind.",
+                wants: "Simplicity, pre-assembled packages, low cost.",
+                fears: "Complexity, making a mistake.",
+                strategy: ["Make it a commodity", "Bundle it", "Simplify UI completely"],
+                color: "rgba(59, 130, 246, 0.7)", // Blue
+                marketPhase: "Mainstream Market"
+            },
+            laggards: {
+                title: "Laggards",
+                pct: "16%",
+                profile: "Skeptics. Their only goal is to maintain the status quo. They often block purchases.",
+                motto: "No way.",
+                risk: 0,
+                goal: "Maintain status quo.",
+                wants: "To be left alone.",
+                fears: "Change.",
+                strategy: ["Don't sell to them", "Neutralize their arguments"],
+                color: "rgba(100, 116, 139, 0.7)", // Slate
+                marketPhase: "End of Life"
+            }
+        };
+
+        // --- Chart Generation Helpers ---
+        function gaussian(x, mean, sigma) {
+            const factor = 1 / (sigma * Math.sqrt(2 * Math.PI));
+            const exponent = -0.5 * Math.pow((x - mean) / sigma, 2);
+            return factor * Math.exp(exponent);
+        }
+
+        function generateCurveData() {
+            const data = [];
+            const labels = [];
+            // Range from -3.5 to 3.5 standard deviations
+            for (let x = -3.5; x <= 3.5; x += 0.1) {
+                labels.push(x.toFixed(1));
+                data.push({ x: x, y: gaussian(x, 0, 1) });
+            }
+            return { labels, data };
+        }
+
+        const curvePoints = generateCurveData();
+        
+        // Define ranges for segments (Standard Deviations)
+        // Innovators: < -2
+        // Early Adopters: -2 to -1.0
+        // Chasm: -1.0 to -0.9 (Artificial gap)
+        // Early Majority: -0.9 to 0
+        // Late Majority: 0 to 1
+        // Laggards: > 1
+
+        const chartConfig = {
+            type: 'line',
+            data: {
+                labels: curvePoints.labels,
+                datasets: [
+                    {
+                        label: 'Innovators',
+                        data: curvePoints.data.map(p => (p.x < -2.0) ? p.y : null),
+                        borderColor: 'rgb(239, 68, 68)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.5)',
+                        fill: true,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        segmentKey: 'innovators'
+                    },
+                    {
+                        label: 'Early Adopters',
+                        data: curvePoints.data.map(p => (p.x >= -2.0 && p.x < -1.1) ? p.y : null),
+                        borderColor: 'rgb(245, 158, 11)',
+                        backgroundColor: 'rgba(245, 158, 11, 0.5)',
+                        fill: true,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        segmentKey: 'earlyAdopters'
+                    },
+                    {
+                        label: 'The Chasm',
+                        data: curvePoints.data.map(p => (p.x >= -1.1 && p.x < -0.9) ? 0.05 : null), // Visual floor Spike for Chasm
+                        borderColor: 'rgb(30, 41, 59)',
+                        backgroundColor: 'rgba(30, 41, 59, 0.8)',
+                        fill: true,
+                        pointRadius: 0,
+                        borderDash: [5, 5],
+                        segmentKey: 'chasm'
+                    },
+                    {
+                        label: 'Early Majority',
+                        data: curvePoints.data.map(p => (p.x >= -0.9 && p.x < 0) ? p.y : null),
+                        borderColor: 'rgb(16, 185, 129)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.5)',
+                        fill: true,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        segmentKey: 'earlyMajority'
+                    },
+                    {
+                        label: 'Late Majority',
+                        data: curvePoints.data.map(p => (p.x >= 0 && p.x < 1.0) ? p.y : null),
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                        fill: true,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        segmentKey: 'lateMajority'
+                    },
+                    {
+                        label: 'Laggards',
+                        data: curvePoints.data.map(p => (p.x >= 1.0) ? p.y : null),
+                        borderColor: 'rgb(100, 116, 139)',
+                        backgroundColor: 'rgba(100, 116, 139, 0.5)',
+                        fill: true,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        segmentKey: 'laggards'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'nearest',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { display: false }, // Hide axes for cleaner look
+                    y: { display: false, min: 0 }
+                },
+                interaction: {
+                    mode: 'dataset',
+                    intersect: false
+                },
+                onClick: (e, elements, chart) => {
+                    if (elements.length > 0) {
+                        const datasetIndex = elements[0].datasetIndex;
+                        const key = chart.data.datasets[datasetIndex].segmentKey;
+                        updateDashboard(key);
+                    }
+                },
+                onHover: (e, elements) => {
+                    e.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+                }
+            }
+        };
+
+        let myChart;
+
+        // --- Core Logic ---
+
+        function initApp() {
+            const ctx = document.getElementById('adoptionChart').getContext('2d');
+            myChart = new Chart(ctx, chartConfig);
+            
+            // Create external legend/controls
+            const controlsContainer = document.getElementById('chart-legend-controls');
+            chartConfig.data.datasets.forEach(ds => {
+                const btn = document.createElement('button');
+                btn.className = 'px-3 py-1 text-xs font-semibold rounded-full border transition-transform hover:scale-105 focus:outline-none';
+                btn.style.borderColor = ds.borderColor;
+                btn.style.color = ds.borderColor.replace('0.7)', '1)').replace('0.5)', '1)'); // Darker text
+                btn.style.backgroundColor = 'white';
+                btn.innerText = ds.label;
+                btn.onclick = () => updateDashboard(ds.segmentKey);
+                controlsContainer.appendChild(btn);
+            });
+
+            // Initial Load
+            updateDashboard('innovators');
+        }
+
+        function updateDashboard(segmentKey) {
+            const data = segments[segmentKey];
+            if (!data) return;
+
+            // Update Text Elements
+            document.getElementById('segment-title').innerText = data.title;
+            document.getElementById('segment-title').style.color = data.color.replace('0.7', '1').replace('0.5', '1');
+            document.getElementById('segment-pct').innerText = `${data.pct} of Market`;
+            document.getElementById('segment-profile').innerText = data.profile;
+            document.getElementById('segment-motto').innerText = `"${data.motto}"`;
+            
+            document.getElementById('segment-goal').innerText = data.goal;
+            document.getElementById('segment-wants').innerText = data.wants;
+            document.getElementById('segment-fears').innerText = data.fears;
+            
+            // Strategy List
+            const strategyList = document.getElementById('segment-strategy');
+            strategyList.innerHTML = '';
+            data.strategy.forEach(item => {
+                const li = document.createElement('li');
+                li.innerText = item;
+                strategyList.appendChild(li);
+            });
+
+            // Risk Bar Animation
+            const riskBar = document.getElementById('risk-bar');
+            riskBar.style.width = `${data.risk}%`;
+            
+            // Market Phase Tag
+            const phaseTag = document.getElementById('market-phase');
+            phaseTag.innerText = data.marketPhase;
+
+            // Highlight Chart
+            if (myChart) {
+                myChart.data.datasets.forEach(ds => {
+                    // Reset opacity
+                    ds.backgroundColor = ds.backgroundColor.replace('0.8)', '0.5)').replace('0.9)', '0.5)');
+                    ds.borderWidth = 1;
+                    
+                    if (ds.segmentKey === segmentKey) {
+                        // Highlight active
+                        ds.backgroundColor = ds.backgroundColor.replace('0.5)', '0.8)');
+                        ds.borderWidth = 3;
+                    }
+                });
+                myChart.update();
+            }
+
+            // Scroll to profiles if on mobile
+            if (window.innerWidth < 768) {
+                document.getElementById('profiles').scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        function toggleWholeProduct() {
+            const teaser = document.getElementById('whole-product-teaser');
+            const reveal = document.getElementById('whole-product-reveal');
+            
+            if (reveal.classList.contains('hidden')) {
+                teaser.classList.add('hidden');
+                reveal.classList.remove('hidden');
+                reveal.classList.add('animate-fade-in');
+            } else {
+                reveal.classList.add('hidden');
+                teaser.classList.remove('hidden');
+            }
+        }
+
+        function resetApp() {
+            updateDashboard('innovators');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Initialize on Load
+        document.addEventListener('DOMContentLoaded', initApp);
+
+    </script>
+</body>
+</html>
